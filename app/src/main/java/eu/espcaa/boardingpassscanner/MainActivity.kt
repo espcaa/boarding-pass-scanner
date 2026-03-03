@@ -53,7 +53,6 @@ fun BoardingPassApp() {
         NavHost(
             navController = navController,
             startDestination = HomeRoute,
-            modifier = Modifier.padding(innerPadding),
             enterTransition = {
                 scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin.Center) + fadeIn() +
                         slideInHorizontally(initialOffsetX = { it / 4 })
@@ -76,7 +75,8 @@ fun BoardingPassApp() {
                 HomeScreen(
                     onScanClick = {
                         navController.navigate(DetailsRoute(scannerId = "Scanner_01"))
-                    }
+                    },
+                    modifier = Modifier.padding(innerPadding)
                 )
             }
 

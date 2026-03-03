@@ -22,6 +22,17 @@ val emphasizedTypography = FontFamily(
         )
     )
 )
+
+@OptIn(ExperimentalTextApi::class)
+val wideTypography = FontFamily(
+    Font(
+        resId = R.font.roboto,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(700),    // Custom weight
+            FontVariation.width(200f)    // Extra wide for labels
+        )
+    )
+)
 // Set of Material typography styles to start with
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val Typography = Typography(
@@ -38,6 +49,12 @@ val Typography = Typography(
         fontSize = 40.sp,
         lineHeight = 45.sp,
         letterSpacing = (-0.25).sp,
+    ),
+    labelLargeEmphasized = TextStyle(
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp
     )
     /* Other default text styles to override
     titleLarge = TextStyle(

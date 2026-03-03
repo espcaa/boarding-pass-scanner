@@ -57,7 +57,7 @@ import androidx.core.content.ContextCompat
 @SuppressLint("UnrememberedMutableState")
 @Composable
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-fun HomeScreen(onScanClick: () -> Unit) {
+fun HomeScreen(onScanClick: () -> Unit, modifier: Modifier = Modifier) {
 
     val context = LocalContext.current
     val activity = context as Activity
@@ -105,7 +105,9 @@ fun HomeScreen(onScanClick: () -> Unit) {
         ), label = "rotation"
     )
 
-    Box {
+    Box (
+        modifier = modifier.fillMaxSize()
+    ) {
         if (!hasPermission && !shouldShowRationale) {
             CameraPermissionCard()
         }
