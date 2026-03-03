@@ -1,6 +1,7 @@
 package eu.espcaa.boardingpassscanner.screens
 
 import android.util.Log
+import android.view.ScaleGestureDetector
 import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -31,6 +32,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import eu.espcaa.boardingpassscanner.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ScanScreen() {
@@ -41,7 +43,29 @@ fun ScanScreen() {
     var isFlashlightOn by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
 
-    val previewView = remember { PreviewView(context) }
+    val scaleGestureDetector = remember(camera) {
+        ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val cameraControl = camera?.cameraControl ?: return false
+                val zoomState = camera?.cameraInfo?.zoomState?.value ?: return false
+
+                val currentZoomRatio = zoomState.zoomRatio
+                val delta = detector.scaleFactor
+                cameraControl.setZoomRatio(currentZoomRatio * delta)
+                return true
+            }
+        })
+    }
+
+    val previewView = remember {
+        PreviewView(context).apply {
+            setOnTouchListener { view, event ->
+                scaleGestureDetector.onTouchEvent(event)
+                view.performClick()
+              true
+          }
+        }
+    }
 
     LaunchedEffect(Unit) {
 
