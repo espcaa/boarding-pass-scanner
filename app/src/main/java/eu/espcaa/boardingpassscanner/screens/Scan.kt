@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -40,6 +41,62 @@ fun ScanScreen() {
     var isFlashlightOn by remember { mutableStateOf(false) }
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
 
+    val previewView = remember { PreviewView(context) }
+
+    LaunchedEffect(Unit) {
+
+        val cameraProvider = cameraProviderFuture.get()
+
+        val preview = androidx.camera.core.Preview.Builder().build().also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
+        }
+
+
+
+            val barcodeScanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
+            val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+
+            imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
+                @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+                val mediaImage = imageProxy.image
+                if (mediaImage != null) {
+                    val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(
+                        mediaImage,
+                        imageProxy.imageInfo.rotationDegrees
+                    )
+
+                    barcodeScanner.process(image)
+                        .addOnSuccessListener { barcodes ->
+                            for (barcode in barcodes) {
+                                Log.d("MLKit", "Scanned: ${barcode.rawValue}")
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("MLKit", "Scan failed", e)
+                        }
+                        .addOnCompleteListener {
+                            imageProxy.close()
+                        }
+                } else {
+                    imageProxy.close()
+                }
+            }
+
+        try {
+            cameraProvider.unbindAll()
+            camera = cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageAnalysis
+            )
+        } catch (e: Exception) {
+            Log.e("CameraX", "Binding failed", e)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize(),
@@ -53,42 +110,11 @@ fun ScanScreen() {
 
 
             AndroidView(
-                factory = { ctx ->
-                    PreviewView(ctx).apply {
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-                },
+                factory = { previewView },
                 modifier = Modifier.fillMaxSize().weight(1f).clip(
                     RoundedCornerShape(16.dp)
                 ),
-                update = { previewView ->
-                    cameraProviderFuture.addListener({
-                        val cameraProvider = cameraProviderFuture.get()
 
-                        val preview = androidx.camera.core.Preview.Builder().build().also {
-                            it.setSurfaceProvider(previewView.surfaceProvider)
-                        }
-
-                        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-
-                        try {
-                            cameraProvider.unbindAll()
-                            camera = cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                            )
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview,
-                            )
-                        } catch (e: Exception) {
-                            Log.e("CameraX", "Binding failed", e)
-                        }
-                    }, ContextCompat.getMainExecutor(context))
-                }
             )
             Row(
                 modifier = Modifier.padding(top = 32.dp),
@@ -102,14 +128,14 @@ fun ScanScreen() {
                     },
                     modifier = Modifier.size(96.dp),
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary,
-                        contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onTertiary
+                        containerColor = if (isFlashlightOn) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.secondary,
+                        contentColor = if (isFlashlightOn) androidx.compose.material3.MaterialTheme.colorScheme.onPrimary else androidx.compose.material3.MaterialTheme.colorScheme.onSecondary
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Icon(
                         painter = painterResource(
-                            id = if (isFlashlightOn) R.drawable.ic_torch_on else R.drawable.ic_torch_off
+                            id = if (isFlashlightOn) R.drawable.ic_torch_off else R.drawable.ic_torch_on
                         ),
                         contentDescription = "Flashlight On",
                         modifier = Modifier.size(32.dp),
