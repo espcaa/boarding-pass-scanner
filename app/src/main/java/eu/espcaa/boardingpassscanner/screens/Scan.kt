@@ -43,6 +43,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import eu.espcaa.boardingpassscanner.R
+import eu.espcaa.boardingpassscanner.parser.BCBPParseResult
+import eu.espcaa.boardingpassscanner.parser.ParseBCBP
 import kotlinx.coroutines.launch
 
 
@@ -227,6 +229,7 @@ fun ScanScreen() {
                             hideJob?.cancel()
                             barcodeRect = firstBarcode.boundingBox
                             imageSize = android.util.Size(image.width, image.height)
+                            handleSuccessfulScan(firstBarcode.rawValue ?: "")
                         } else {
                             if (hideJob?.isActive != true) {
                                 hideJob = scope.launch {
@@ -346,3 +349,22 @@ fun ScanScreen() {
     }
 }
 
+fun handleSuccessfulScan(rawData: String) {
+    val bcbpParseResult: BCBPParseResult = ParseBCBP(rawData)
+    if (bcbpParseResult.errors.isEmpty() && bcbpParseResult.boardingPass != null) {
+        val boardingPass = bcbpParseResult.boardingPass
+        Log.d("ScanScreen", "Parsed boarding pass:")
+        Log.d("ScanScreen", "Passenger Name: ${boardingPass?.passengerName}")
+        Log.d("ScanScreen", "PNR Code: ${boardingPass?.pnrCode}")
+        boardingPass?.legs?.forEachIndexed { index, leg ->
+            Log.d(
+                "ScanScreen",
+                "Leg ${index + 1}: ${leg.from} -> ${leg.to}, Flight ${leg.carrier} ${leg.flightNumber}, Seat ${leg.seat}"
+            )
+        }
+        // raw data
+        Log.d("ScanScreen", "Raw Data: $rawData")
+    } else {
+        Log.e("ScanScreen", "Failed to parse boarding pass: ${bcbpParseResult.errors}")
+    }
+}
