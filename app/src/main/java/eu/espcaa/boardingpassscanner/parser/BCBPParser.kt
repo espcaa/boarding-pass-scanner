@@ -4,12 +4,31 @@ import java.time.LocalDate
 
 // interesting :p https://www.iata.org/contentassets/1dccc9ed041b4f3bbdcf8ee8682e75c4/2021_03_02-bcbp-implementation-guide-version-7-.pdf
 
+data class JulianBoardingPass(
+    val numberOfLegs: Int,       // index 1 :3
+    val passengerName: String,   // mandatory, 20 chars
+    val pnrCode: String,         // mandatory, 7 chars
+    val legs: List<JulianLeg>,
+    val isEticket: Boolean       // mandatory: 1 char ( 'E' for e-ticket, space for paper ticket)
+)
+
+data class JulianLeg(
+    val from: String,            // mandatory: 3 chars ( iata airport code )
+    val to: String,              // mandatory: 3 chars ( iata airport code )
+    val carrier: String,         // mandatory: 3 chars ( iata airline code )
+    val flightNumber: String,    // mandatory: 5 chars ( right justified, zero filled )
+    val flightJulian: String,          // mandatory: 3-digit julian date
+    val flightDateJulian: String, // mandatory: 3-digit julian date
+    val seat: String,            // mandatory : 4 chars ( right justified, space filled )
+    val sequenceNumber: String,  // mandatory: 5 chars ( right justified, zero filled )
+    val compartmentCode: String,     // mandatory: 1 char cabin class
+)
+
 data class BoardingPass(
     val numberOfLegs: Int,       // index 1 :3
     val passengerName: String,   // mandatory, 20 chars
     val pnrCode: String,         // mandatory, 7 chars
-    val issueDate: LocalDate?,          // derived from conditional data, may be null if not present or parsing fails
-    val issueYear: Int?,           // derived from issueDate, may be null if issueDate is null
+    val issueYear: Int? = null,
     val legs: List<Leg>
 )
 
@@ -19,7 +38,7 @@ data class Leg(
     val carrier: String,         // mandatory: 3 chars ( iata airline code )
     val flightNumber: String,    // mandatory: 5 chars ( right justified, zero filled )
     val flightJulian: String,          // mandatory: 3-digit julian date
-    val flightDate: LocalDate?,          // derived from flightJulian, may be null if parsing fails
+    val flightDate: LocalDate?,       // derived from flightJulian, may be null if flightJulian is null or invalid
     val seat: String,            // mandatory : 4 chars ( right justified, space filled )
     val sequenceNumber: String,  // mandatory: 5 chars ( right justified, zero filled )
     val compartmentCode: String,     // mandatory: 1 char cabin class
@@ -32,7 +51,7 @@ data class Error(
 )
 
 data class BCBPParseResult(
-    val boardingPass: BoardingPass?,
+    val boardingPass: JulianBoardingPass?,
     val errors: List<Error>
 )
 
@@ -55,10 +74,9 @@ fun ParseIATADate(julianDate: String, currentYear: Int = LocalDate.now().year): 
 
 fun ParseBCBP(rawData: String): BCBPParseResult {
     val errors = mutableListOf<Error>()
-    val legs = mutableListOf<Leg>()
+    val legs = mutableListOf<JulianLeg>()
 
     try {
-
 
         if (rawData.length < 60 || rawData[0] != 'M') {
             errors.add(
@@ -83,81 +101,114 @@ fun ParseBCBP(rawData: String): BCBPParseResult {
         val passengerName = rawData.substring(2, 22).trim()
         val isEticket = rawData[22] == 'E'
         val pnrCode = rawData.substring(23, 30).trim()
+        val firstFlightDeparture = rawData.substring(30, 33)
+        val firstFlightArrival = rawData.substring(33, 36)
+        val firstFlightCarrier = rawData.substring(36, 39).trim()
+        val firstFlightNumber = rawData.substring(39, 44).trim()
+        val firstFlightJulian = rawData.substring(44, 47)
+        val compartmentCode = rawData[47].toString()
+        val firstFlightSeat = rawData.substring(48, 52).trim()
+        val firstFlightSequence = rawData.substring(51, 56).trim()
 
-        var pointer = 30
-
-        var julianIssueDate = ""
-        var issueDate: LocalDate? = null
-
-        repeat(numberOfLegs) { legIndex ->
-            android.util.Log.d("ScanScreen", "Leg $legIndex start pointer: $pointer")
-
-            val from = rawData.substring(pointer, pointer + 3).trim().also { pointer += 3 }
-            val to = rawData.substring(pointer, pointer + 3).trim().also { pointer += 3 }
-            android.util.Log.d("ScanScreen", "Leg $legIndex from: $from to: $to pointer: $pointer")
-
-            val carrier = rawData.substring(pointer, pointer + 3).trim().also { pointer += 3 }
-            val flightNumber =
-                rawData.substring(pointer, pointer + 5).trim().also { pointer += 5 }
-            val flightDate =
-                rawData.substring(pointer, pointer + 3).trim().also { pointer += 3 }
-            val compartmentCode = rawData[pointer].toString().also { pointer += 1 }
-            val seat = rawData.substring(pointer, pointer + 4).trim().also { pointer += 4 }
-            val sequenceNumber =
-                rawData.substring(pointer, pointer + 5).trim().also { pointer += 5 }
-            pointer += 1
-
-            val conditionalSize =
-                rawData.substring(pointer, pointer + 2).toInt(16).also { pointer += 2 }
-            val conditionalStart = pointer
-
-            android.util.Log.d(
-                "ScanScreen",
-                "Leg $legIndex conditionalSize: $conditionalSize conditionalStart: $conditionalStart rawData around pointer: '${
-                    rawData.substring(
-                        pointer - 2,
-                        minOf(pointer + 20, rawData.length)
-                    )
-                }'"
+        legs.add(
+            JulianLeg(
+                from = firstFlightDeparture,
+                to = firstFlightArrival,
+                carrier = firstFlightCarrier,
+                flightNumber = firstFlightNumber,
+                flightJulian = firstFlightJulian,
+                flightDateJulian = firstFlightJulian,
+                seat = firstFlightSeat,
+                sequenceNumber = firstFlightSequence,
+                compartmentCode = compartmentCode,
             )
+        )
 
-            if (conditionalSize > 0 && legIndex == 0) {
+        var pointer = 58
 
-                pointer += 4
-                julianIssueDate = rawData.substring(pointer, pointer + 4)
-                issueDate = ParseIATADate(julianIssueDate)
+        repeat(numberOfLegs - 1) { i ->
+            val hex = rawData.substring(pointer, pointer + 2)
+            val legLength = hex.toIntOrNull(16) ?: run {
+                errors.add(
+                    Error(
+                        "Invalid leg length",
+                        "Expected a 2-digit hex number at position $pointer, got '$hex'"
+                    )
+                )
+                return BCBPParseResult(null, errors)
             }
 
-            pointer = conditionalStart + conditionalSize
+            // move ahead of the hex length field
+            pointer += 2
+
+            // move ahead of the leg data + skip the pnr code for now (7 chars)
+            pointer += legLength + 7
+
+            val legDeparture = rawData.substring(pointer, pointer + 3)
+            val legArrival = rawData.substring(pointer + 3, pointer + 6)
+            val legCarrier = rawData.substring(pointer + 6, pointer + 9).trim()
+            val legFlightNumber = rawData.substring(pointer + 9, pointer + 14).trim()
+            val legFlightJulian = rawData.substring(pointer + 14, pointer + 17)
+            val legCompartmentCode = rawData[pointer + 17].toString()
+            val legSeat = rawData.substring(pointer + 18, pointer + 22).trim()
+            val legSequence = rawData.substring(pointer + 21, pointer + 26).trim()
+
+            // go to next leg :)
+            pointer += 28
 
             legs.add(
-                Leg(
-                    from,
-                    to,
-                    carrier,
-                    flightNumber,
-                    flightDate,
-                    ParseIATADate(flightDate, issueDate?.year ?: LocalDate.now().year),
-                    seat,
-                    sequenceNumber,
-                    compartmentCode,
-                    isEticket
+                JulianLeg(
+                    from = legDeparture,
+                    to = legArrival,
+                    carrier = legCarrier,
+                    flightNumber = legFlightNumber,
+                    flightJulian = legFlightJulian,
+                    flightDateJulian = legFlightJulian,
+                    seat = legSeat,
+                    sequenceNumber = legSequence,
+                    compartmentCode = legCompartmentCode,
                 )
             )
         }
 
-
-        val boardingPass = BoardingPass(
-            numberOfLegs,
-            passengerName,
-            pnrCode,
-            issueDate,
-            issueDate?.year,
-            legs
+        val boardingPass = JulianBoardingPass(
+            numberOfLegs = numberOfLegs,
+            passengerName = passengerName,
+            pnrCode = pnrCode,
+            legs = legs,
+            isEticket = isEticket
         )
         return BCBPParseResult(boardingPass, errors)
     } catch (e: Exception) {
         errors.add(Error("Parsing error", e.message ?: "Unknown error"))
         return BCBPParseResult(null, errors)
     }
+}
+
+fun ConvertToBoardingPass(
+    julianPass: JulianBoardingPass,
+    year: Int? = LocalDate.now().year
+): BoardingPass {
+    val legs = julianPass.legs.map { leg ->
+        Leg(
+            from = leg.from,
+            to = leg.to,
+            carrier = leg.carrier,
+            flightNumber = leg.flightNumber,
+            flightJulian = leg.flightJulian,
+            flightDate = ParseIATADate(leg.flightJulian, year ?: LocalDate.now().year),
+            seat = leg.seat,
+            sequenceNumber = leg.sequenceNumber,
+            compartmentCode = leg.compartmentCode,
+            isEticket = julianPass.isEticket
+        )
+    }
+
+    return BoardingPass(
+        numberOfLegs = julianPass.numberOfLegs,
+        passengerName = julianPass.passengerName,
+        pnrCode = julianPass.pnrCode,
+        issueYear = year,
+        legs = legs
+    )
 }

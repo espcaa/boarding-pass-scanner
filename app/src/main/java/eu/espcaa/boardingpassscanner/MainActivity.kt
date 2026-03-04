@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -14,8 +13,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
@@ -31,7 +28,7 @@ import kotlinx.serialization.Serializable
 object HomeRoute
 
 @Serializable
-data class DetailsRoute(val scannerId: String)
+data class ScanRoute(val scannerId: String)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,13 +71,13 @@ fun BoardingPassApp() {
             composable<HomeRoute> {
                 HomeScreen(
                     onScanClick = {
-                        navController.navigate(DetailsRoute(scannerId = "Scanner_01"))
+                        navController.navigate(ScanRoute)
                     },
                     modifier = Modifier.padding(innerPadding)
                 )
             }
 
-            composable<DetailsRoute> {
+            composable<ScanRoute> {
                 ScanScreen()
             }
         }
@@ -88,8 +85,3 @@ fun BoardingPassApp() {
 }
 
 
-
-@Composable
-fun DetailsScreen() {
-
-}

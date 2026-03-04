@@ -354,9 +354,9 @@ fun handleSuccessfulScan(rawData: String) {
     if (bcbpParseResult.errors.isEmpty() && bcbpParseResult.boardingPass != null) {
         val boardingPass = bcbpParseResult.boardingPass
         Log.d("ScanScreen", "Parsed boarding pass:")
-        Log.d("ScanScreen", "Passenger Name: ${boardingPass?.passengerName}")
-        Log.d("ScanScreen", "PNR Code: ${boardingPass?.pnrCode}")
-        boardingPass?.legs?.forEachIndexed { index, leg ->
+        Log.d("ScanScreen", "Passenger Name: ${boardingPass.passengerName}")
+        Log.d("ScanScreen", "PNR Code: ${boardingPass.pnrCode}")
+        boardingPass.legs.forEachIndexed { index, leg ->
             Log.d(
                 "ScanScreen",
                 "Leg ${index + 1}: ${leg.from} -> ${leg.to}, Flight ${leg.carrier} ${leg.flightNumber}, Seat ${leg.seat}"
