@@ -2,7 +2,7 @@ package eu.espcaa.boardingpassscanner.utils
 
 import android.content.Context
 
-object AirlineManager {
+class AirlineManager(androidContext: Context) {
     private var airlineMap: Map<String, String> = emptyMap()
 
     fun init(context: Context) {

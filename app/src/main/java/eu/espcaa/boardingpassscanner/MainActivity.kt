@@ -22,7 +22,12 @@ import androidx.navigation.compose.rememberNavController
 import eu.espcaa.boardingpassscanner.screens.HomeScreen
 import eu.espcaa.boardingpassscanner.screens.ScanScreen
 import eu.espcaa.boardingpassscanner.ui.theme.BoardingPassScannerTheme
+import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import kotlinx.serialization.Serializable
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.GlobalContext.startKoin
+import org.koin.dsl.module
 
 @Serializable
 object HomeRoute
@@ -39,7 +44,16 @@ class MainActivity : ComponentActivity() {
                 BoardingPassApp()
             }
         }
+        startKoin {
+            androidLogger()
+            androidContext(this@MainActivity)
+            modules(appModule)
+        }
     }
+}
+
+val appModule = module {
+    single { AirlineManager(androidContext()) }
 }
 
 @Composable

@@ -20,10 +20,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,10 +46,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil3.compose.AsyncImage
 import eu.espcaa.boardingpassscanner.R
 import eu.espcaa.boardingpassscanner.parser.BCBPParseResult
+import eu.espcaa.boardingpassscanner.parser.JulianBoardingPass
 import eu.espcaa.boardingpassscanner.parser.ParseBCBP
+import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 
 @SuppressLint("DefaultLocale")
@@ -119,9 +127,12 @@ fun BarcodeTracker(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun ScanScreen() {
+fun ScanScreen(
+    airlineManager: AirlineManager = koinInject()
+) {
+
 
     var rotationDegrees by remember { mutableIntStateOf(0) }
 
@@ -187,6 +198,9 @@ fun ScanScreen() {
         }
     }
 
+    var scannedPass by remember { mutableStateOf<JulianBoardingPass?>(null) }
+    var showSheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
 
         val cameraProvider = cameraProviderFuture.get()
@@ -229,7 +243,12 @@ fun ScanScreen() {
                             hideJob?.cancel()
                             barcodeRect = firstBarcode.boundingBox
                             imageSize = android.util.Size(image.width, image.height)
-                            handleSuccessfulScan(firstBarcode.rawValue ?: "")
+                            firstBarcode.rawValue?.let { rawData ->
+                                handleSuccessfulScan(rawData, onSuccess = {
+                                    scannedPass = it
+                                    showSheet = true
+                                })
+                            }
                         } else {
                             if (hideJob?.isActive != true) {
                                 hideJob = scope.launch {
@@ -346,25 +365,56 @@ fun ScanScreen() {
                 }
             }
         }
+        if (showSheet && scannedPass != null) {
+            ModalBottomSheet(onDismissRequest = { showSheet = false }) {
+                ResultSheetContent(scannedPass!!, airlineManager)
+            }
+        }
     }
 }
 
-fun handleSuccessfulScan(rawData: String) {
+fun handleSuccessfulScan(rawData: String, onSuccess: (JulianBoardingPass) -> Unit = {}) {
     val bcbpParseResult: BCBPParseResult = ParseBCBP(rawData)
     if (bcbpParseResult.errors.isEmpty() && bcbpParseResult.boardingPass != null) {
-        val boardingPass = bcbpParseResult.boardingPass
-        Log.d("ScanScreen", "Parsed boarding pass:")
-        Log.d("ScanScreen", "Passenger Name: ${boardingPass.passengerName}")
-        Log.d("ScanScreen", "PNR Code: ${boardingPass.pnrCode}")
-        boardingPass.legs.forEachIndexed { index, leg ->
-            Log.d(
-                "ScanScreen",
-                "Leg ${index + 1}: ${leg.from} -> ${leg.to}, Flight ${leg.carrier} ${leg.flightNumber}, Seat ${leg.seat}"
-            )
-        }
-        // raw data
-        Log.d("ScanScreen", "Raw Data: $rawData")
+        onSuccess(bcbpParseResult.boardingPass)
     } else {
         Log.e("ScanScreen", "Failed to parse boarding pass: ${bcbpParseResult.errors}")
     }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ResultSheetContent(boardingPass: JulianBoardingPass, airlineManager: AirlineManager) {
+
+    Column() {
+        Row() {
+            androidx.compose.material3.Surface(
+                modifier = Modifier.size(80.dp),
+                shape = MaterialShapes.SoftBurst.toShape(),
+                tonalElevation = 4.dp
+            ) {
+                AsyncImage(
+                    model = getAirlineLogoURL(boardingPass.legs.first().carrier, airlineManager),
+                    modifier = Modifier.size(64.dp),
+                    contentDescription = "Airline Logo"
+                )
+            }
+            Column(
+                modifier = Modifier.padding(start = 16.dp)
+            ) {
+                androidx.compose.material3.Text(
+                    text = "${boardingPass.legs.first().from} → ${boardingPass.legs.last().to}",
+                    style = androidx.compose.material3.MaterialTheme.typography.titleLargeEmphasized
+                )
+            }
+        }
+    }
+}
+
+fun getAirlineLogoURL(airlineCode: String, airlineManager: AirlineManager): String? {
+    return "https://www.flightaware.com/images/airline_logos/180px/${
+        airlineManager.getIcao(
+            airlineCode
+        )
+    }.png"
 }
