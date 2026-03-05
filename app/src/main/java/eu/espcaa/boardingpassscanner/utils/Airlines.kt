@@ -1,6 +1,9 @@
 package eu.espcaa.boardingpassscanner.utils
 
 import android.content.Context
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 
 class AirlineManager(androidContext: Context) {
     private var airlineMap: Map<String, String> = emptyMap()
@@ -9,7 +12,10 @@ class AirlineManager(androidContext: Context) {
         try {
             val jsonString =
                 context.assets.open("airline_map.json").bufferedReader().use { it.readText() }
-            airlineMap = kotlinx.serialization.json.Json.decodeFromString(jsonString)
+            airlineMap = Json.decodeFromString(
+                MapSerializer(String.serializer(), String.serializer()),
+                jsonString
+            )
         } catch (e: Exception) {
             e.printStackTrace()
             airlineMap = emptyMap()

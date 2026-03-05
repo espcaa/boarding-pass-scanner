@@ -39,21 +39,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            BoardingPassScannerTheme {
-                BoardingPassApp()
-            }
-        }
         startKoin {
             androidLogger()
             androidContext(this@MainActivity)
             modules(appModule)
         }
+        setContent {
+            BoardingPassScannerTheme {
+                BoardingPassApp()
+            }
+        }
+
     }
 }
 
 val appModule = module {
-    single { AirlineManager(androidContext()) }
+    single { AirlineManager(androidContext()).also { it.init(androidContext()) } }
 }
 
 @Composable
@@ -85,7 +86,7 @@ fun BoardingPassApp() {
             composable<HomeRoute> {
                 HomeScreen(
                     onScanClick = {
-                        navController.navigate(ScanRoute)
+                        navController.navigate(ScanRoute(scannerId = "default"))
                     },
                     modifier = Modifier.padding(innerPadding)
                 )

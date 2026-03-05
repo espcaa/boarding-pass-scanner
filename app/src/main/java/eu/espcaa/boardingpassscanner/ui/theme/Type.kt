@@ -33,6 +33,7 @@ val wideTypography = FontFamily(
         )
     )
 )
+
 // Set of Material typography styles to start with
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 val Typography = Typography(
@@ -55,7 +56,14 @@ val Typography = Typography(
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp
-    )
+    ),
+    titleLargeEmphasized = TextStyle(
+        fontFamily = emphasizedTypography,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
+    ),
     /* Other default text styles to override
     titleLarge = TextStyle(
         fontFamily = FontFamily.Default,

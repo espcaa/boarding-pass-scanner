@@ -26,7 +26,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -244,6 +248,8 @@ fun ScanScreen(
                             barcodeRect = firstBarcode.boundingBox
                             imageSize = android.util.Size(image.width, image.height)
                             firstBarcode.rawValue?.let { rawData ->
+                                // don't do it if the bottom sheet is alr opened :pensive:
+                                if (showSheet) return@let
                                 handleSuccessfulScan(rawData, onSuccess = {
                                     scannedPass = it
                                     showSheet = true
@@ -387,31 +393,86 @@ fun handleSuccessfulScan(rawData: String, onSuccess: (JulianBoardingPass) -> Uni
 fun ResultSheetContent(boardingPass: JulianBoardingPass, airlineManager: AirlineManager) {
 
     Column() {
-        Row() {
-            androidx.compose.material3.Surface(
+        Row(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
                 modifier = Modifier.size(80.dp),
                 shape = MaterialShapes.SoftBurst.toShape(),
+                color = Color(255, 255, 255, 255),
                 tonalElevation = 4.dp
             ) {
                 AsyncImage(
-                    model = getAirlineLogoURL(boardingPass.legs.first().carrier, airlineManager),
-                    modifier = Modifier.size(64.dp),
+                    model = getAirlineLogoURL(
+                        boardingPass.legs.first().carrier,
+                        airlineManager
+                    ),
+                    modifier = Modifier
+                        .size(64.dp)
+                        .padding(16.dp),
                     contentDescription = "Airline Logo"
                 )
             }
             Column(
                 modifier = Modifier.padding(start = 16.dp)
             ) {
-                androidx.compose.material3.Text(
+                Text(
                     text = "${boardingPass.legs.first().from} → ${boardingPass.legs.last().to}",
-                    style = androidx.compose.material3.MaterialTheme.typography.titleLargeEmphasized
+                    style = MaterialTheme.typography.titleLargeEmphasized
                 )
+            }
+
+        }
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
+            // cards for each leg
+            boardingPass.legs.forEach { leg ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    shape = when (leg) {
+                        boardingPass.legs.first() -> RoundedCornerShape(
+                            topStart = 16.dp,
+                            topEnd = 16.dp
+                        )
+
+                        boardingPass.legs.last() -> RoundedCornerShape(
+                            bottomStart = 16.dp,
+                            bottomEnd = 16.dp
+                        )
+
+                        else -> RoundedCornerShape(0.dp)
+                    },
+                    color = MaterialTheme.colorScheme.surfaceBright,
+                    tonalElevation = 2.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "${leg.carrier} ${leg.flightNumber}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "From ${leg.from} to ${leg.to}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "Seat: ${leg.seat}, Date: ${leg.flightDateJulian}",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-fun getAirlineLogoURL(airlineCode: String, airlineManager: AirlineManager): String? {
+fun getAirlineLogoURL(airlineCode: String, airlineManager: AirlineManager): String {
     return "https://www.flightaware.com/images/airline_logos/180px/${
         airlineManager.getIcao(
             airlineCode
