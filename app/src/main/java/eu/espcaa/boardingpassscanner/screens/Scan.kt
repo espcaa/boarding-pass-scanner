@@ -46,7 +46,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -210,6 +212,8 @@ fun ScanScreen(
     var scannedPass by remember { mutableStateOf<JulianBoardingPass?>(null) }
     var showSheet by remember { mutableStateOf(false) }
 
+    val haptic = LocalHapticFeedback.current
+
     LaunchedEffect(Unit) {
 
         val cameraProvider = cameraProviderFuture.get()
@@ -255,9 +259,12 @@ fun ScanScreen(
                             firstBarcode.rawValue?.let { rawData ->
                                 // don't do it if the bottom sheet is alr opened :pensive:
                                 if (showSheet) return@let
+
+
                                 handleSuccessfulScan(rawData, onSuccess = {
                                     scannedPass = it
                                     showSheet = true
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 })
                             }
                         } else {
