@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -27,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -67,17 +69,17 @@ fun ZoomBubble(
     zoom: Float,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.material3.Surface(
+    Surface(
         modifier = modifier,
         shape = RoundedCornerShape(50),
         tonalElevation = 6.dp,
-        color = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+        color = colorScheme.tertiary
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = String.format("%.1fx", zoom),
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-            style = androidx.compose.material3.MaterialTheme.typography.labelLargeEmphasized,
-            color = androidx.compose.material3.MaterialTheme.colorScheme.onTertiary
+            style = MaterialTheme.typography.labelLargeEmphasized,
+            color = colorScheme.onTertiary
         )
     }
 }
@@ -91,7 +93,7 @@ fun BarcodeTracker(
 ) {
     if (imageSize == null || rect.isEmpty) return
 
-    val primaryColor = androidx.compose.material3.MaterialTheme.colorScheme.tertiary
+    val primaryColor = colorScheme.tertiary
 
     androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
 
@@ -131,7 +133,10 @@ fun BarcodeTracker(
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun ScanScreen(
     airlineManager: AirlineManager = koinInject()
@@ -355,8 +360,8 @@ fun ScanScreen(
                     },
                     modifier = Modifier.size(96.dp),
                     colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = if (isFlashlightOn) androidx.compose.material3.MaterialTheme.colorScheme.primary else androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                        contentColor = if (isFlashlightOn) androidx.compose.material3.MaterialTheme.colorScheme.onPrimary else androidx.compose.material3.MaterialTheme.colorScheme.onSecondary
+                        containerColor = if (isFlashlightOn) colorScheme.primary else colorScheme.secondary,
+                        contentColor = if (isFlashlightOn) colorScheme.onPrimary else colorScheme.onSecondary
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -366,7 +371,7 @@ fun ScanScreen(
                         ),
                         contentDescription = "Flashlight On",
                         modifier = Modifier.size(32.dp),
-                        tint = androidx.compose.material3.MaterialTheme.colorScheme.onTertiary
+                        tint = colorScheme.onTertiary
                     )
                 }
             }
@@ -395,37 +400,90 @@ fun ResultSheetContent(boardingPass: JulianBoardingPass, airlineManager: Airline
     Column() {
         Row(
             modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    modifier = Modifier.size(80.dp),
+                    shape = MaterialShapes.SoftBurst.toShape(),
+                    color = Color(255, 255, 255, 255),
+                    tonalElevation = 4.dp
+                ) {
+                    AsyncImage(
+                        model = getAirlineLogoURL(
+                            boardingPass.legs.first().carrier,
+                            airlineManager
+                        ),
+                        modifier = Modifier
+                            .size(64.dp)
+                            .padding(16.dp),
+                        contentDescription = "Airline Logo"
+                    )
+                }
+            }
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.Top
+            ) {
+                // save button
+                Button(
+                    onClick = {},
+                    shape = RoundedCornerShape(
+                        topStart = 16.dp,
+                        bottomStart = 16.dp
+                    )
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_download),
+                        contentDescription = "Save",
+                        tint = colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(text = "Save")
+
+
+                }
+                // open in other view
+                IconButton(
+                    shape = RoundedCornerShape(
+                        topEnd = 16.dp,
+                        bottomEnd = 16.dp
+                    ),
+                    onClick = {},
+                    modifier = Modifier.padding(horizontal = 1.dp),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = colorScheme.primary,
+                        contentColor = colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_open),
+                        contentDescription = "Open in other view",
+                        tint = colorScheme.onPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier
                 .padding(24.dp)
                 .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                modifier = Modifier.size(80.dp),
-                shape = MaterialShapes.SoftBurst.toShape(),
-                color = Color(255, 255, 255, 255),
-                tonalElevation = 4.dp
-            ) {
-                AsyncImage(
-                    model = getAirlineLogoURL(
-                        boardingPass.legs.first().carrier,
-                        airlineManager
-                    ),
-                    modifier = Modifier
-                        .size(64.dp)
-                        .padding(16.dp),
-                    contentDescription = "Airline Logo"
-                )
-            }
-            Column(
-                modifier = Modifier.padding(start = 16.dp)
-            ) {
-                Text(
-                    text = "${boardingPass.legs.first().from} → ${boardingPass.legs.last().to}",
-                    style = MaterialTheme.typography.titleLargeEmphasized
-                )
-            }
-
+            Text(
+                text = "${boardingPass.legs.first().from} → ${boardingPass.legs.last().to}",
+                style = MaterialTheme.typography.titleLargeEmphasized
+            )
         }
+
         Column(
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
@@ -434,20 +492,24 @@ fun ResultSheetContent(boardingPass: JulianBoardingPass, airlineManager: Airline
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    shape = when (leg) {
-                        boardingPass.legs.first() -> RoundedCornerShape(
-                            topStart = 16.dp,
-                            topEnd = 16.dp
-                        )
+                    shape = when {
+                        boardingPass.legs.size == 1 -> {
+                            RoundedCornerShape(16.dp)
+                        }
 
-                        boardingPass.legs.last() -> RoundedCornerShape(
-                            bottomStart = 16.dp,
-                            bottomEnd = 16.dp
-                        )
+                        leg == boardingPass.legs.first() -> {
+                            RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                        }
 
-                        else -> RoundedCornerShape(0.dp)
+                        leg == boardingPass.legs.last() -> {
+                            RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+                        }
+
+                        else -> {
+                            RoundedCornerShape(0.dp)
+                        }
                     },
-                    color = MaterialTheme.colorScheme.surfaceBright,
+                    color = colorScheme.surfaceBright,
                     tonalElevation = 2.dp
                 ) {
                     Column(
@@ -471,6 +533,7 @@ fun ResultSheetContent(boardingPass: JulianBoardingPass, airlineManager: Airline
         }
     }
 }
+
 
 fun getAirlineLogoURL(airlineCode: String, airlineManager: AirlineManager): String {
     return "https://www.flightaware.com/images/airline_logos/180px/${
