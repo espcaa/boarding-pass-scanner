@@ -4,18 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -73,21 +68,28 @@ fun BoardingPassApp() {
             navController = navController,
             startDestination = HomeRoute,
             enterTransition = {
-                scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin.Center) + fadeIn() +
-                        slideInHorizontally(initialOffsetX = { it / 4 })
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(700)
+                )
             },
             exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -it }) + fadeOut() +
-                        scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin.Center)
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                    animationSpec = tween(700)
+                )
             },
-
             popEnterTransition = {
-                slideInHorizontally(initialOffsetX = { -it }) + fadeIn() +
-                        scaleIn(initialScale = 0.9f, transformOrigin = TransformOrigin.Center)
+                slideIntoContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(700)
+                )
             },
             popExitTransition = {
-                scaleOut(targetScale = 0.9f, transformOrigin = TransformOrigin.Center) + fadeOut() +
-                        slideOutHorizontally(targetOffsetX = { it / 4 })
+                slideOutOfContainer(
+                    towards = AnimatedContentTransitionScope.SlideDirection.End,
+                    animationSpec = tween(700)
+                )
             }
         ) {
             composable<WelcomeRoute> {
@@ -103,7 +105,12 @@ fun BoardingPassApp() {
             }
 
             composable<HomeRoute> {
-                HomeScreen(innerPadding)
+                HomeScreen(
+                    innerPadding,
+                    onScanClick = {
+                        navController.navigate(TestScanRoute(scannerId = "default"))
+                    }
+                )
             }
         }
     }

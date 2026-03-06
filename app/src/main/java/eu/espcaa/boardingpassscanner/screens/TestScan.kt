@@ -52,7 +52,7 @@ fun TestScanner(
             showSheet = true
         },
         overlayContent = {},
-        canScan = showSheet,
+        canScan = !showSheet,
     )
 
     if (showSheet && scannedPass != null) {

@@ -50,7 +50,7 @@ data class Screen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
+fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp), onScanClick: () -> Unit = {}) {
 
     val screens = listOf(
         Screen("Home", Icons.Filled.Home, Icons.Outlined.Home) { HomeContent(it) },
@@ -90,7 +90,7 @@ fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp)) {
                         .padding(16.dp)
                 ) {
                     FloatingActionButton(
-                        onClick = { },
+                        onClick = onScanClick,
                         modifier = Modifier.size(80.dp),
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
