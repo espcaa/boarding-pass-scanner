@@ -10,8 +10,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,7 +20,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import eu.espcaa.boardingpassscanner.screens.HomeScreen
-import eu.espcaa.boardingpassscanner.screens.ScanScreen
+import eu.espcaa.boardingpassscanner.screens.TestScanner
+import eu.espcaa.boardingpassscanner.screens.WelcomeScreen
 import eu.espcaa.boardingpassscanner.ui.theme.BoardingPassScannerTheme
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import kotlinx.serialization.Serializable
@@ -30,10 +31,13 @@ import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
 
 @Serializable
-object HomeRoute
+object WelcomeRoute
 
 @Serializable
-data class ScanRoute(val scannerId: String)
+data class TestScanRoute(val scannerId: String)
+
+@Serializable
+object HomeRoute
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,7 +65,10 @@ val appModule = module {
 fun BoardingPassApp() {
     val navController = rememberNavController()
 
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0)
+    ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = HomeRoute,
@@ -83,20 +90,21 @@ fun BoardingPassApp() {
                         slideOutHorizontally(targetOffsetX = { it / 4 })
             }
         ) {
-            composable<HomeRoute> {
-                HomeScreen(
-                    onScanClick = {
-                        navController.navigate(ScanRoute(scannerId = "default"))
+            composable<WelcomeRoute> {
+                WelcomeScreen(
+                    onNextClick = {
+                        navController.navigate(TestScanRoute(scannerId = "default"))
                     },
-                    modifier = Modifier.padding(innerPadding)
                 )
             }
 
-            composable<ScanRoute> {
-                ScanScreen()
+            composable<TestScanRoute> {
+                TestScanner()
+            }
+
+            composable<HomeRoute> {
+                HomeScreen(innerPadding)
             }
         }
     }
 }
-
-
