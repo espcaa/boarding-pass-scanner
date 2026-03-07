@@ -19,7 +19,12 @@ import eu.espcaa.boardingpassscanner.screens.TestScanner
 import eu.espcaa.boardingpassscanner.screens.WelcomeScreen
 import eu.espcaa.boardingpassscanner.ui.theme.BoardingPassScannerTheme
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
+import eu.espcaa.boardingpassscanner.utils.AirportManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext.startKoin
@@ -35,29 +40,41 @@ data class TestScanRoute(val scannerId: String)
 object HomeRoute
 
 class MainActivity : ComponentActivity() {
+
+    // Use the standard Koin delegate for Kotlin
+    private val airportManager: AirportManager by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
         startKoin {
             androidLogger()
             androidContext(this@MainActivity)
             modules(appModule)
         }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            airportManager.loadAirports()
+        }
+
+        enableEdgeToEdge()
         setContent {
             BoardingPassScannerTheme {
                 BoardingPassApp()
             }
         }
-
     }
 }
 
 val appModule = module {
     single { AirlineManager(androidContext()).also { it.init(androidContext()) } }
+    single { AirportManager(androidContext()) }
+
 }
 
 @Composable
 fun BoardingPassApp() {
+
     val navController = rememberNavController()
 
     Scaffold(

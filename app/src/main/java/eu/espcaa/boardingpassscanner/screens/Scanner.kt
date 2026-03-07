@@ -156,7 +156,7 @@ fun BoardingPassScanner(
             Rect.VectorConverter
         )
     }
-    
+
     var imageSize by remember { mutableStateOf<android.util.Size?>(null) }
     var hideJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val scope = rememberCoroutineScope()
@@ -248,9 +248,9 @@ fun BoardingPassScanner(
                             hideJob?.cancel()
                             barcodeRect = firstBarcode.boundingBox
                             imageSize = android.util.Size(image.width, image.height)
-                            firstBarcode.rawValue?.let { rawData ->
-                                // don't do it if the bottom sheet is alr opened :pensive:
-                                if (canScan) {
+                            if (canScan) {
+                                firstBarcode.rawValue?.let { rawData ->
+                                    // don't do it if the bottom sheet is alr opened :pensive:
                                     handleSuccessfulScan(rawData, onSuccess = {
                                         onSuccess(it)
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)

@@ -35,7 +35,7 @@ val wideTypography = FontFamily(
 )
 
 // Set of Material typography styles to start with
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalTextApi::class)
 val Typography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
@@ -63,6 +63,22 @@ val Typography = Typography(
         fontSize = 32.sp,
         lineHeight = 28.sp,
         letterSpacing = 0.sp
+    ),
+    titleSmallEmphasized = TextStyle(
+        fontFamily = FontFamily(
+            Font(
+                resId = R.font.roboto,
+                variationSettings = FontVariation.Settings(
+                    FontVariation.weight(300),    // Thin weight
+                    FontVariation.width(150f),   // Custom width (Fancy/Wide)
+                    FontVariation.slant(-10f)    // Custom slant for a more dynamic look
+                )
+            )
+        ),
+        fontWeight = FontWeight.Thin,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp
     ),
     /* Other default text styles to override
     titleLarge = TextStyle(
