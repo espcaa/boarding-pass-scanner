@@ -23,6 +23,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import eu.espcaa.boardingpassscanner.screens.HomeScreen
+import eu.espcaa.boardingpassscanner.screens.SettingsScreen
 import eu.espcaa.boardingpassscanner.screens.TestScanner
 import eu.espcaa.boardingpassscanner.screens.WelcomeScreen
 import eu.espcaa.boardingpassscanner.ui.theme.BoardingPassScannerTheme
@@ -50,6 +51,9 @@ data class TestScanRoute(val scannerId: String)
 
 @Serializable
 object HomeRoute
+
+@Serializable
+object SettingsRoute
 
 class MainActivity : ComponentActivity() {
 
@@ -151,7 +155,16 @@ fun BoardingPassApp() {
                     innerPadding,
                     onScanClick = {
                         navController.navigate(TestScanRoute(scannerId = "default"))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(SettingsRoute)
                     }
+                )
+            }
+
+            composable<SettingsRoute> {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }

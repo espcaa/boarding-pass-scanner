@@ -50,7 +50,11 @@ data class Screen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp), onScanClick: () -> Unit = {}) {
+fun HomeScreen(
+    innerPadding: PaddingValues = PaddingValues(0.dp),
+    onScanClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
+) {
 
     val screens = listOf(
         Screen("Home", Icons.Filled.Home, Icons.Outlined.Home) { HomeContent(it) },
@@ -59,14 +63,15 @@ fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp), onScanClick: (
             "Profile",
             Icons.Filled.AccountCircle,
             Icons.Outlined.AccountCircle
-        ) { ProfileContent(it) }
+        ) { ProfileScreen(it, onSettingsClick) }
     )
 
     var query by rememberSaveable { mutableStateOf("") }
     var expanded by rememberSaveable { mutableStateOf(false) }
     var searchHistory by remember { mutableStateOf(listOf("idk gng", "chinese airlines", "paris")) }
 
-    var currentScreen by remember { mutableStateOf(screens[0]) }
+    var selectedIndex by rememberSaveable { mutableStateOf(0) }
+    val currentScreen = screens[selectedIndex]
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
     Box(
@@ -78,29 +83,31 @@ fun HomeScreen(innerPadding: PaddingValues = PaddingValues(0.dp), onScanClick: (
                     HomeBottomBar(
                         screens,
                         currentScreen,
-                        onScreenSelected = { selectedScreen ->
-                            currentScreen = selectedScreen
+                        onScreenSelected = { index ->
+                            selectedIndex = index
                         },
                     )
                 }
             },
             floatingActionButton = {
-                Box(
-                    modifier = Modifier
-                        .padding(16.dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = onScanClick,
-                        modifier = Modifier.size(80.dp),
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
+                if (currentScreen.name == "Home" && !isSearchExpanded) {
+                    Box(
+                        modifier = Modifier
+                            .padding(16.dp)
                     ) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = "Add",
-                            modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        FloatingActionButton(
+                            onClick = onScanClick,
+                            modifier = Modifier.size(80.dp),
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = "Add",
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -144,17 +151,6 @@ fun MapContent(innerPadding: PaddingValues = PaddingValues(0.dp)) {
             .padding(innerPadding),
     ) {
         Text("Map of your flights")
-    }
-}
-
-@Composable
-fun ProfileContent(innerPadding: PaddingValues = PaddingValues(0.dp)) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding),
-    ) {
-        Text("Your profile")
     }
 }
 
@@ -224,12 +220,12 @@ fun SearchBarOverlay(
 fun HomeBottomBar(
     screens: List<Screen>,
     currentScreen: Screen,
-    onScreenSelected: (Screen) -> Unit = {}
+    onScreenSelected: (Int) -> Unit = {}
 ) {
     NavigationBar(
         modifier = Modifier.fillMaxWidth()
     ) {
-        screens.forEachIndexed { _, screen ->
+        screens.forEachIndexed { index, screen ->
             NavigationBarItem(
                 icon = {
                     Icon(
@@ -240,7 +236,7 @@ fun HomeBottomBar(
                 label = { Text(screen.name) },
                 selected = currentScreen.name == screen.name,
                 onClick = {
-                    onScreenSelected(screen)
+                    onScreenSelected(index)
                 }
             )
         }
