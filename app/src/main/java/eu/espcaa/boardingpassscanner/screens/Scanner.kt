@@ -38,6 +38,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -140,6 +141,7 @@ fun BoardingPassScanner(
 ) {
 
     var rotationDegrees by remember { mutableIntStateOf(0) }
+    val currentCanScan by rememberUpdatedState(canScan)
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -248,7 +250,7 @@ fun BoardingPassScanner(
                             hideJob?.cancel()
                             barcodeRect = firstBarcode.boundingBox
                             imageSize = android.util.Size(image.width, image.height)
-                            if (canScan) {
+                            if (currentCanScan) {
                                 firstBarcode.rawValue?.let { rawData ->
                                     // don't do it if the bottom sheet is alr opened :pensive:
                                     handleSuccessfulScan(rawData, onSuccess = {

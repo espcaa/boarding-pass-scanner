@@ -1,5 +1,6 @@
 package eu.espcaa.boardingpassscanner
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,7 +11,14 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -22,6 +30,7 @@ import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import eu.espcaa.boardingpassscanner.utils.AirportManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.android.ext.android.inject
@@ -29,6 +38,9 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.dsl.module
+
+val Context.dataStore by preferencesDataStore(name = "settings")
+val SETUP_COMPLETED = booleanPreferencesKey("setup_completed")
 
 @Serializable
 object WelcomeRoute
@@ -75,7 +87,15 @@ val appModule = module {
 @Composable
 fun BoardingPassApp() {
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val navController = rememberNavController()
+
+    val setupCompleted by context.dataStore.data
+        .map { it[SETUP_COMPLETED] ?: false }
+        .collectAsState(initial = null)
+
+    if (setupCompleted == null) return
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -83,7 +103,7 @@ fun BoardingPassApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = HomeRoute,
+            startDestination = if (setupCompleted == true) HomeRoute else WelcomeRoute,
             enterTransition = {
                 slideIntoContainer(
                     towards = AnimatedContentTransitionScope.SlideDirection.Start,
@@ -112,7 +132,12 @@ fun BoardingPassApp() {
             composable<WelcomeRoute> {
                 WelcomeScreen(
                     onNextClick = {
-                        navController.navigate(TestScanRoute(scannerId = "default"))
+                        scope.launch {
+                            context.dataStore.edit { it[SETUP_COMPLETED] = true }
+                        }
+                        navController.navigate(HomeRoute) {
+                            popUpTo(WelcomeRoute) { inclusive = true }
+                        }
                     },
                 )
             }

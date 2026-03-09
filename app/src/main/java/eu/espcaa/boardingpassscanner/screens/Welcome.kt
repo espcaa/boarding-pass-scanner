@@ -115,7 +115,7 @@ fun WelcomeScreen(onNextClick: () -> Unit, modifier: Modifier = Modifier) {
                     )
 
                     Button(
-                        onClick = { /* Action */ },
+                        onClick = onNextClick,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 48.dp),

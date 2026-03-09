@@ -76,4 +76,5 @@ dependencies {
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.navigation)
     implementation(libs.bundles.coil)
+    implementation(libs.androidx.datastore.preferences)
 }
