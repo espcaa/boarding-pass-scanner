@@ -135,7 +135,7 @@ fun BarcodeTracker(
 )
 @Composable
 fun BoardingPassScanner(
-    onSuccess: (JulianBoardingPass) -> Unit,
+    onSuccess: (JulianBoardingPass, String) -> Unit,
     overlayContent: @Composable (BoxScope.() -> Unit) = {},
     canScan: Boolean = true,
 ) {
@@ -150,7 +150,7 @@ fun BoardingPassScanner(
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var zoomLevel by remember { mutableFloatStateOf(1f) }
 
-    // barcode overlay variables
+    
     var barcodeRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     val animatedRect = remember {
         Animatable(
@@ -181,6 +181,7 @@ fun BoardingPassScanner(
 
     val previewView = remember {
         PreviewView(context).apply {
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
             setOnTouchListener { view, event ->
                 scaleGestureDetector.onTouchEvent(event)
 
@@ -252,9 +253,9 @@ fun BoardingPassScanner(
                             imageSize = android.util.Size(image.width, image.height)
                             if (currentCanScan) {
                                 firstBarcode.rawValue?.let { rawData ->
-                                    // don't do it if the bottom sheet is alr opened :pensive:
+                                    
                                     handleSuccessfulScan(rawData, onSuccess = {
-                                        onSuccess(it)
+                                        onSuccess(it, rawData)
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     })
                                 }
@@ -264,7 +265,7 @@ fun BoardingPassScanner(
                                 hideJob = scope.launch {
                                     kotlinx.coroutines.delay(1000)
                                     barcodeRect = null
-                                    // make it disappear
+                                    
                                     animatedRect.snapTo(
                                         androidx.compose.ui.geometry.Rect(
                                             0f,

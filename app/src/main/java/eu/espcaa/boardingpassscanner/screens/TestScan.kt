@@ -1,5 +1,11 @@
 package eu.espcaa.boardingpassscanner.screens
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -9,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,13 +36,16 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,14 +53,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import eu.espcaa.boardingpassscanner.R
+import eu.espcaa.boardingpassscanner.data.BoardingPassDao
+import eu.espcaa.boardingpassscanner.data.BoardingPassEntity
+import eu.espcaa.boardingpassscanner.data.LegEntity
 import eu.espcaa.boardingpassscanner.parser.JulianBoardingPass
 import eu.espcaa.boardingpassscanner.parser.JulianLeg
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import eu.espcaa.boardingpassscanner.utils.AirportManager
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 
@@ -59,27 +76,113 @@ import org.koin.compose.koinInject
 fun TestScanner(
     airlineManager: AirlineManager = koinInject(),
     airportManager: AirportManager = koinInject(),
+    boardingPassDao: BoardingPassDao = koinInject(),
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
 
-    var scannedPass by remember { mutableStateOf<JulianBoardingPass?>(null) }
-    var showSheet by remember { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+    }
 
-    BoardingPassScanner(
-        onSuccess = {
-            scannedPass = it
-            showSheet = true
-        },
-        overlayContent = {},
-        canScan = !showSheet,
-    )
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
-    if (showSheet && scannedPass != null) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
-            ResultSheetContent(
-                boardingPass = scannedPass!!,
-                airlineManager = airlineManager,
-                airportManager = airportManager
-            )
+    if (hasCameraPermission) {
+        var scannedPass by remember { mutableStateOf<JulianBoardingPass?>(null) }
+        var scannedRawBarcode by remember { mutableStateOf("") }
+        var showSheet by remember { mutableStateOf(false) }
+
+        BoardingPassScanner(
+            onSuccess = { pass, rawData ->
+                scannedPass = pass
+                scannedRawBarcode = rawData
+                showSheet = true
+            },
+            overlayContent = {},
+            canScan = !showSheet,
+        )
+
+        if (showSheet && scannedPass != null) {
+            ModalBottomSheet(onDismissRequest = { showSheet = false }) {
+                ResultSheetContent(
+                    boardingPass = scannedPass!!,
+                    airlineManager = airlineManager,
+                    airportManager = airportManager,
+                    onSave = { pass ->
+                        scope.launch {
+                            val year = java.time.LocalDate.now().year
+                            val entity = BoardingPassEntity(
+                                passengerName = pass.passengerName,
+                                pnrCode = pass.pnrCode,
+                                numberOfLegs = pass.numberOfLegs,
+                                isEticket = pass.isEticket,
+                                year = year,
+                                rawBarcode = scannedRawBarcode
+                            )
+                            val legs = pass.legs.map { leg ->
+                                LegEntity(
+                                    boardingPassId = 0,
+                                    from = leg.from,
+                                    to = leg.to,
+                                    carrier = leg.carrier,
+                                    flightNumber = leg.flightNumber,
+                                    flightJulian = leg.flightJulian,
+                                    seat = leg.seat,
+                                    sequenceNumber = leg.sequenceNumber,
+                                    compartmentCode = leg.compartmentCode
+                                )
+                            }
+                            boardingPassDao.insertBoardingPassWithLegs(entity, legs)
+                            showSheet = false
+                        }
+                    }
+                )
+            }
+        }
+    } else {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Camera permission is required to scan boarding passes.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp)
+                )
+                Button(
+                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    modifier = Modifier.padding(top = 16.dp)
+                ) {
+                    Text("Grant Permission")
+                }
+                Button(
+                    onClick = {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null)
+                            )
+                        )
+                    },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text("Open Settings")
+                }
+            }
         }
     }
 }
@@ -89,7 +192,8 @@ fun TestScanner(
 fun ResultSheetContent(
     boardingPass: JulianBoardingPass,
     airlineManager: AirlineManager,
-    airportManager: AirportManager
+    airportManager: AirportManager,
+    onSave: (JulianBoardingPass) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -129,9 +233,9 @@ fun ResultSheetContent(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.Top
             ) {
-                // save button
+                
                 Button(
-                    onClick = {},
+                    onClick = { onSave(boardingPass) },
                     shape = RoundedCornerShape(
                         topStart = 16.dp,
                         bottomStart = 16.dp,
@@ -149,7 +253,7 @@ fun ResultSheetContent(
 
 
                 }
-                // open in other view
+                
                 IconButton(
                     shape = RoundedCornerShape(
                         topEnd = 16.dp,
@@ -176,27 +280,24 @@ fun ResultSheetContent(
 
 
         val outlineColor = colorScheme.outlineVariant
-        Column(
+        Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 16.dp)
+                .height(30.dp)
         ) {
-
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(30.dp)
-            ) {
                 val wavePath = Path()
                 val waveHeight = 15f
-                val waveWidth = 30f
-                var x = 0f
-                var goingUp = true
+                val desiredWaveWidth = 30f
+                val halfWaveCount =
+                    (size.width / desiredWaveWidth).toInt().coerceAtLeast(1)
+                val waveWidth = size.width / halfWaveCount
 
                 wavePath.moveTo(0f, size.height / 2)
 
-                while (x < size.width) {
+                var x = 0f
+                var goingUp = true
+                repeat(halfWaveCount) {
                     val controlY =
                         if (goingUp) size.height / 2 - waveHeight else size.height / 2 + waveHeight
                     wavePath.quadraticTo(
@@ -215,7 +316,6 @@ fun ResultSheetContent(
                     )
                 )
             }
-        }
 
         Column(
             modifier = Modifier
@@ -280,13 +380,10 @@ fun FlightLegSegment(
                     .background(colorScheme.primaryContainer)
             )
 
-            Surface(
+            OutlinedCard(
                 modifier = Modifier
                     .padding(start = 20.dp, top = 8.dp, bottom = 8.dp)
                     .fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = colorScheme.surfaceBright,
-                border = BorderStroke(1.dp, colorScheme.outlineVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -295,13 +392,13 @@ fun FlightLegSegment(
                     ) {
                         Text(
                             text = "${leg.carrier} ${leg.flightNumber.trimStart('0')}",
-                            style = MaterialTheme.typography.titleMediumEmphasized,
-                            color = colorScheme.primary
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colorScheme.onSurface
                         )
                         Text(
                             text = "JULIAN ${leg.flightDateJulian}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.outline
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -359,7 +456,7 @@ fun AirportNode(airportName: String, icon: ImageVector, label: String) {
 @Composable
 fun DetailItem(label: String, value: String) {
     Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = colorScheme.outline)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
 }

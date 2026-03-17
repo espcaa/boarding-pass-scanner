@@ -34,7 +34,7 @@ val wideTypography = FontFamily(
     )
 )
 
-// Set of Material typography styles to start with
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalTextApi::class)
 val Typography = Typography(
     bodyLarge = TextStyle(
