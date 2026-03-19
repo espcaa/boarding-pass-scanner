@@ -106,9 +106,13 @@ fun TestScanner(
 
         BoardingPassScanner(
             onSuccess = { pass, rawData ->
-                scannedPass = pass
-                scannedRawBarcode = rawData
-                showSheet = true
+                scope.launch {
+                    if (!boardingPassDao.existsByRawBarcode(rawData)) {
+                        scannedPass = pass
+                        scannedRawBarcode = rawData
+                        showSheet = true
+                    }
+                }
             },
             overlayContent = {},
             canScan = !showSheet,

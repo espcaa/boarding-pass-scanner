@@ -142,6 +142,7 @@ fun BoardingPassScanner(
 
     var rotationDegrees by remember { mutableIntStateOf(0) }
     val currentCanScan by rememberUpdatedState(canScan)
+    val scannedBarcodes = remember { mutableSetOf<String>() }
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -253,11 +254,12 @@ fun BoardingPassScanner(
                             imageSize = android.util.Size(image.width, image.height)
                             if (currentCanScan) {
                                 firstBarcode.rawValue?.let { rawData ->
-                                    
-                                    handleSuccessfulScan(rawData, onSuccess = {
-                                        onSuccess(it, rawData)
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    })
+                                    if (scannedBarcodes.add(rawData)) {
+                                        handleSuccessfulScan(rawData, onSuccess = {
+                                            onSuccess(it, rawData)
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        })
+                                    }
                                 }
                             }
                         } else {

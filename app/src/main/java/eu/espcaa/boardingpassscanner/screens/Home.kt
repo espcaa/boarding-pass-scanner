@@ -57,9 +57,9 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import eu.espcaa.boardingpassscanner.data.BoardingPassDao
 import eu.espcaa.boardingpassscanner.data.BoardingPassWithLegs
+import eu.espcaa.boardingpassscanner.utils.AirlineColorCache
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import org.koin.compose.koinInject
-import org.koin.compose.viewmodel.koinViewModel
 
 data class Screen(
     val name: String,
@@ -72,7 +72,8 @@ data class Screen(
 @Composable
 fun HomeScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
-    onScanClick: () -> Unit = {}
+    onScanClick: () -> Unit = {},
+    onPassClick: (String, Int) -> Unit
 ) {
 
     var activeQuery by rememberSaveable { mutableStateOf("") }
@@ -82,7 +83,7 @@ fun HomeScreen(
             "Library",
             Icons.AutoMirrored.Filled.AirplaneTicket,
             Icons.AutoMirrored.Outlined.AirplaneTicket
-        ) { HomeContent(it, searchQuery = activeQuery) },
+        ) { HomeContent(it, searchQuery = activeQuery, onPassClick = onPassClick) },
     )
 
     var query by rememberSaveable { mutableStateOf("") }
@@ -169,13 +170,14 @@ fun HomeScreen(
 fun HomeContent(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     searchQuery: String = "",
-    viewModel: HomeViewModel = koinViewModel()
+    onPassClick: (String, Int) -> Unit = { _, _ -> }
 ) {
 
     val dao: BoardingPassDao = koinInject()
     val airlineManager: AirlineManager = koinInject()
+    val colorCache: AirlineColorCache = koinInject()
     val allPasses by dao.getAllBoardingPasses().collectAsState(initial = emptyList())
-    val airlineColors by viewModel.airlineColors.collectAsState()
+    val airlineColors by colorCache.colors.collectAsState()
 
     val passes = remember(allPasses, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -219,9 +221,15 @@ fun HomeContent(
                             airlineManager = airlineManager,
                             cachedScheme = airlineColors[carrier],
                             onSchemeReady = { scheme ->
-                                viewModel.cacheColorScheme(
+                                colorCache.cacheColorScheme(
                                     carrier,
                                     scheme
+                                )
+                            },
+                            onClick = {
+                                onPassClick(
+                                    pass.boardingPass.rawBarcode,
+                                    pass.boardingPass.year
                                 )
                             }
                         )
@@ -238,7 +246,8 @@ fun BoardingPassCard(
     pass: BoardingPassWithLegs,
     airlineManager: AirlineManager,
     cachedScheme: ColorScheme?,
-    onSchemeReady: (ColorScheme) -> Unit
+    onSchemeReady: (ColorScheme) -> Unit,
+    onClick: () -> Unit = {}
 ) {
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
@@ -257,7 +266,8 @@ fun BoardingPassCard(
                 .padding(vertical = 8.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            shape = CircleShape
+            shape = CircleShape,
+            onClick = onClick
         ) {
             Row(
                 modifier = Modifier.padding(16.dp),

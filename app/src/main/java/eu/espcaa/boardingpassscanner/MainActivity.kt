@@ -4,8 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -15,12 +13,12 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
@@ -30,10 +28,11 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.room.Room
 import eu.espcaa.boardingpassscanner.data.AppDatabase
+import eu.espcaa.boardingpassscanner.screens.BoardingDetailScreen
 import eu.espcaa.boardingpassscanner.screens.HomeScreen
-import eu.espcaa.boardingpassscanner.screens.HomeViewModel
 import eu.espcaa.boardingpassscanner.screens.TestScanner
 import eu.espcaa.boardingpassscanner.ui.theme.BoardingPassScannerTheme
+import eu.espcaa.boardingpassscanner.utils.AirlineColorCache
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import eu.espcaa.boardingpassscanner.utils.AirportManager
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +42,7 @@ import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext.startKoin
-import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.context.GlobalContext.stopKoin
 import org.koin.dsl.module
 
 @Serializable
@@ -52,6 +51,12 @@ data class TestScanRoute(val scannerId: String) : NavKey
 @Serializable
 object HomeRoute : NavKey
 
+@Serializable
+data class BoardingPassDetailRoute(
+    val rawBarcode: String,
+    val year: Int,
+) : NavKey
+
 class MainActivity : ComponentActivity() {
 
     private val airportManager: AirportManager by inject()
@@ -59,6 +64,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        stopKoin()
         startKoin {
             androidLogger()
             androidContext(this@MainActivity)
@@ -81,12 +87,12 @@ class MainActivity : ComponentActivity() {
 val appModule = module {
     single { AirlineManager(androidContext()).also { it.init(androidContext()) } }
     single { AirportManager(androidContext()) }
+    single { AirlineColorCache() }
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "boarding_passes.db")
             .build()
     }
     single { get<AppDatabase>().boardingPassDao() }
-    viewModelOf(::HomeViewModel)
 }
 
 @Composable
@@ -121,14 +127,14 @@ fun BoardingPassApp() {
                     animationSpec = tween(durationMillis = 350),
                     initialAlpha = 0f
                 ) togetherWith
-                scaleOut(
-                    targetScale = 0.9f,
-                    transformOrigin = TransformOrigin.Center,
-                    animationSpec = tween(
-                        durationMillis = 350,
-                        easing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
-                    )
-                ) + fadeOut(
+                        scaleOut(
+                            targetScale = 0.9f,
+                            transformOrigin = TransformOrigin.Center,
+                            animationSpec = tween(
+                                durationMillis = 350,
+                                easing = CubicBezierEasing(0.1f, 0.1f, 0f, 1f)
+                            )
+                        ) + fadeOut(
                     animationSpec = tween(durationMillis = 350),
                     targetAlpha = 0f
                 )
@@ -144,8 +150,21 @@ fun BoardingPassApp() {
                             innerPadding,
                             onScanClick = {
                                 backStack.add(TestScanRoute(scannerId = "default"))
+
+                            },
+                            onPassClick = { rawBarcode, year ->
+                                backStack.add(
+                                    BoardingPassDetailRoute(rawBarcode, year)
+                                )
                             }
+
                         )
+                    }
+
+                    is BoardingPassDetailRoute -> NavEntry(key) {
+                        BoardingDetailScreen(key.rawBarcode, key.year, onBack = {
+                            backStack.removeLast()
+                        })
                     }
 
                     is TestScanRoute -> NavEntry(key) {
