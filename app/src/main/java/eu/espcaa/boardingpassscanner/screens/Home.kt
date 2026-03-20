@@ -1,8 +1,14 @@
 package eu.espcaa.boardingpassscanner.screens
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,14 +20,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AirplaneTicket
 import androidx.compose.material.icons.automirrored.outlined.AirplaneTicket
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -54,7 +61,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.palette.graphics.Palette
 import coil3.compose.AsyncImage
@@ -65,6 +74,7 @@ import eu.espcaa.boardingpassscanner.data.BoardingPassDao
 import eu.espcaa.boardingpassscanner.data.BoardingPassWithLegs
 import eu.espcaa.boardingpassscanner.utils.AirlineColorCache
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
+import eu.espcaa.boardingpassscanner.utils.AirportManager
 import org.koin.compose.koinInject
 
 data class Screen(
@@ -86,6 +96,9 @@ fun HomeScreen(
 
     var selectedPassesIds by rememberSaveable { mutableStateOf(setOf<Long>()) }
     var isSelectionMode = selectedPassesIds.isNotEmpty()
+    BackHandler(enabled = isSelectionMode) {
+        selectedPassesIds = emptySet()
+    }
 
     val toggleSelection: (Long) -> Unit = { id ->
         if (selectedPassesIds.contains(id)) {
@@ -109,7 +122,8 @@ fun HomeScreen(
                 toggleSelection = {
                     toggleSelection(it)
                 },
-                selectedPassesIds = selectedPassesIds
+                selectedPassesIds = selectedPassesIds,
+                isSelectionMode = isSelectionMode
             )
         },
     )
@@ -221,7 +235,8 @@ fun HomeContent(
     searchQuery: String = "",
     onPassClick: (String, Int) -> Unit = { _, _ -> },
     toggleSelection: (Long) -> Unit = { _ -> },
-    selectedPassesIds: Set<Long> = emptySet()
+    selectedPassesIds: Set<Long> = emptySet(),
+    isSelectionMode: Boolean = false
 ) {
 
     val dao: BoardingPassDao = koinInject()
@@ -262,11 +277,13 @@ fun HomeContent(
             } else if (passes.isEmpty()) {
                 Text("No results for \"$searchQuery\"")
             } else {
+                val haptic = LocalHapticFeedback.current
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     items(passes, key = { it.boardingPass.id }) { pass ->
                         val carrier = pass.legs.first().carrier
+                        val passId = pass.boardingPass.id
                         BoardingPassCard(
                             pass = pass,
                             airlineManager = airlineManager,
@@ -278,13 +295,20 @@ fun HomeContent(
                                 )
                             },
                             onClick = {
-                                onPassClick(
-                                    pass.boardingPass.rawBarcode,
-                                    pass.boardingPass.year
-                                )
+                                if (isSelectionMode) {
+                                    toggleSelection(passId)
+                                } else {
+                                    onPassClick(
+                                        pass.boardingPass.rawBarcode,
+                                        pass.boardingPass.year
+                                    )
+                                }
                             },
-                            onLongClick = { toggleSelection(pass.boardingPass.id ?: 0L) },
-                            selected = pass.boardingPass.id?.let { selectedPassesIds.contains(it) } == true
+                            onLongClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                toggleSelection(passId)
+                            },
+                            selected = selectedPassesIds.contains(passId)
                         )
                     }
                 }
@@ -297,7 +321,8 @@ fun HomeContent(
 @Composable
 fun BoardingPassCard(
     pass: BoardingPassWithLegs,
-    airlineManager: AirlineManager,
+    airlineManager: AirlineManager = koinInject(),
+    airportManager: AirportManager = koinInject(),
     cachedScheme: ColorScheme?,
     onSchemeReady: (ColorScheme) -> Unit,
     onClick: () -> Unit = {},
@@ -324,8 +349,8 @@ fun BoardingPassCard(
                     onClick = onClick,
                     onLongClick = onLongClick
                 ),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = CircleShape,
         ) {
             Row(
@@ -373,18 +398,23 @@ fun BoardingPassCard(
                             }
                         )
                     }
-                    if (selected) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = selected,
+                        enter = fadeIn() + scaleIn(initialScale = 0.6f),
+                        exit = fadeOut() + scaleOut(targetScale = 0.6f)
+                    ) {
                         Surface(
                             modifier = Modifier.size(64.dp),
                             shape = MaterialShapes.SoftBurst.toShape(),
-                            // primary but transparent
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
                         ) {
                             Icon(
-                                Icons.Default.Check,
+                                Icons.Rounded.Check,
                                 contentDescription = "Selected",
                                 tint = Color.White,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .padding(16.dp)
                             )
                         }
                     }
@@ -392,15 +422,34 @@ fun BoardingPassCard(
 
                 Column(modifier = Modifier.padding(start = 16.dp)) {
                     Text(
-                        text = "${pass.legs.first().from} → ${pass.legs.first().to}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        text = "${airportManager.getCity(pass.legs.first().from)} → ${
+                            airportManager.getCity(
+                                pass.legs.first().to
+                            )
+                        }",
+                        style = MaterialTheme.typography.titleMediumEmphasized,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
-                    Text(
-                        text = pass.legs.first().carrier,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    )
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        ) {
+                            Text(
+                                text = "${pass.legs.first().carrier} ${
+                                    pass.legs.first().flightNumber.trimStart(
+                                        '0'
+                                    )
+                                }",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
