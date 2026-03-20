@@ -34,4 +34,7 @@ interface BoardingPassDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM boarding_passes WHERE rawBarcode = :rawBarcode LIMIT 1)")
     suspend fun existsByRawBarcode(rawBarcode: String): Boolean
+
+    @Query("DELETE FROM boarding_passes WHERE rawBarcode = :rawBarcode")
+    suspend fun deleteByRawBarcode(rawBarcode: String)
 }

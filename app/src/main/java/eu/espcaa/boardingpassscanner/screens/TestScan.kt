@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +24,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AirlineStops
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FlightLand
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -110,8 +113,9 @@ fun TestScanner(
                     scannedRawBarcode = rawData
                     showSheet = true
                     true
+                } else {
+                    false
                 }
-                false
             },
             overlayContent = {},
             canScan = !showSheet,
@@ -148,7 +152,11 @@ fun TestScanner(
                                 )
                             }
                             boardingPassDao.insertBoardingPassWithLegs(entity, legs)
-                            showSheet = false
+                        }
+                    },
+                    onDelete = {
+                        scope.launch {
+                            boardingPassDao.deleteByRawBarcode(scannedRawBarcode)
                         }
                     }
                 )
@@ -196,7 +204,8 @@ fun ResultSheetContent(
     boardingPass: JulianBoardingPass,
     airlineManager: AirlineManager,
     airportManager: AirportManager,
-    onSave: (JulianBoardingPass) -> Unit = {}
+    onSave: (JulianBoardingPass) -> Unit = {},
+    onDelete: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -236,25 +245,53 @@ fun ResultSheetContent(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.Top
             ) {
+                var isSaved by remember { mutableStateOf(false) }
 
                 Button(
-                    onClick = { onSave(boardingPass) },
+                    onClick = {
+                        if (isSaved) {
+                            onDelete()
+                            isSaved = false
+                        } else {
+                            onSave(boardingPass)
+                            isSaved = true
+                        }
+                    },
                     shape = RoundedCornerShape(
                         topStart = 16.dp,
                         bottomStart = 16.dp,
                         topEnd = 4.dp,
                         bottomEnd = 4.dp
-                    )
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_download),
-                        contentDescription = "Save",
-                        tint = colorScheme.onPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(text = "Save")
+                    ),
+                    colors = MaterialTheme.colorScheme.run {
+                        if (isSaved) ButtonDefaults.buttonColors(
+                            containerColor = primaryContainer,
+                            contentColor = onPrimaryContainer
+                        ) else ButtonDefaults.buttonColors(
+                            containerColor = primary,
+                            contentColor = onPrimary
+                        )
+                    },
 
-
+                    ) {
+                    AnimatedContent(targetState = isSaved) { saved ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (saved) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Saved",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_download),
+                                    contentDescription = "Save",
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(text = if (saved) " Saved" else " Save")
+                        }
+                    }
                 }
 
                 IconButton(
