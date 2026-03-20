@@ -47,14 +47,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -70,11 +70,14 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
 import eu.espcaa.boardingpassscanner.data.BoardingPassDao
 import eu.espcaa.boardingpassscanner.data.BoardingPassWithLegs
 import eu.espcaa.boardingpassscanner.utils.AirlineColorCache
 import eu.espcaa.boardingpassscanner.utils.AirlineManager
 import eu.espcaa.boardingpassscanner.utils.AirportManager
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 data class Screen(
@@ -131,6 +134,9 @@ fun HomeScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var expanded by rememberSaveable { mutableStateOf(false) }
     var searchHistory by remember { mutableStateOf(listOf<String>()) }
+
+    val dao: BoardingPassDao = koinInject()
+    val scope = rememberCoroutineScope()
 
     var selectedIndex by rememberSaveable { mutableStateOf(0) }
     val currentScreen = screens[selectedIndex]
@@ -191,7 +197,13 @@ fun HomeScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* Delete Logic */ }) {
+                        IconButton(onClick = {
+                            scope.launch {
+                                selectedPassesIds.forEach { id -> dao.deleteBoardingPass(id) }
+                                selectedPassesIds = emptySet()
+                            }
+
+                        }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                     },
@@ -242,8 +254,14 @@ fun HomeContent(
     val dao: BoardingPassDao = koinInject()
     val airlineManager: AirlineManager = koinInject()
     val colorCache: AirlineColorCache = koinInject()
+    val isDarkTheme = isSystemInDarkTheme()
+    val scope = rememberCoroutineScope()
     val allPasses by dao.getAllBoardingPasses().collectAsState(initial = emptyList())
     val airlineColors by colorCache.colors.collectAsState()
+
+    LaunchedEffect(isDarkTheme) {
+        colorCache.loadFromDb(isDarkTheme)
+    }
 
     val passes = remember(allPasses, searchQuery) {
         if (searchQuery.isBlank()) {
@@ -273,7 +291,7 @@ fun HomeContent(
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
             if (allPasses.isEmpty()) {
-                Text("Your scanned boarding passes will appear here.")
+                BoardingPassesPlaceholder()
             } else if (passes.isEmpty()) {
                 Text("No results for \"$searchQuery\"")
             } else {
@@ -288,11 +306,14 @@ fun HomeContent(
                             pass = pass,
                             airlineManager = airlineManager,
                             cachedScheme = airlineColors[carrier],
-                            onSchemeReady = { scheme ->
-                                colorCache.cacheColorScheme(
-                                    carrier,
-                                    scheme
-                                )
+                            onSchemeReady = { seedColor, scheme ->
+                                scope.launch {
+                                    colorCache.cacheColorScheme(
+                                        carrier,
+                                        seedColor,
+                                        scheme
+                                    )
+                                }
                             },
                             onClick = {
                                 if (isSelectionMode) {
@@ -324,7 +345,7 @@ fun BoardingPassCard(
     airlineManager: AirlineManager = koinInject(),
     airportManager: AirportManager = koinInject(),
     cachedScheme: ColorScheme?,
-    onSchemeReady: (ColorScheme) -> Unit,
+    onSchemeReady: (Color, ColorScheme) -> Unit,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     selected: Boolean = false
@@ -349,8 +370,8 @@ fun BoardingPassCard(
                     onClick = onClick,
                     onLongClick = onLongClick
                 ),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             shape = CircleShape,
         ) {
             Row(
@@ -378,21 +399,18 @@ fun BoardingPassCard(
                                 Palette.from(bitmap).generate { palette ->
                                     val swatch = palette?.vibrantSwatch ?: palette?.dominantSwatch
                                     swatch?.let {
-                                        val scheme = if (isDarkTheme) {
-                                            darkColorScheme().copy(
-                                                primaryContainer = Color(it.rgb),
-                                                onPrimaryContainer = Color(it.titleTextColor),
-                                                primary = Color(it.rgb)
-                                            )
-                                        } else {
-                                            lightColorScheme().copy(
-                                                primaryContainer = Color(it.rgb),
-                                                onPrimaryContainer = Color(it.titleTextColor),
-                                                primary = Color(it.rgb)
-                                            )
-                                        }
-                                        localScheme = scheme
-                                        onSchemeReady(scheme)
+                                        val hsl = FloatArray(3)
+                                        androidx.core.graphics.ColorUtils.colorToHSL(it.rgb, hsl)
+                                        hsl[1] = (hsl[1] * 1.5f).coerceAtMost(1f)
+                                        hsl[2] = maxOf(hsl[2], 0.5f)
+                                        val seedColor =
+                                            Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
+                                        val scheme = dynamicColorScheme(
+                                            seedColor = seedColor,
+                                            isDark = isDarkTheme,
+                                            style = PaletteStyle.Vibrant
+                                        )
+                                        onSchemeReady(seedColor, scheme)
                                     }
                                 }
                             }
@@ -445,7 +463,7 @@ fun BoardingPassCard(
                                     )
                                 }",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -544,5 +562,51 @@ fun HomeBottomBar(
             )
         }
 
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun BoardingPassesPlaceholder() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = CircleShape,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(64.dp),
+                shape = MaterialShapes.SoftBurst.toShape(),
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.AirplaneTicket,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+                    modifier = Modifier
+                        .size(32.dp)
+                        .padding(16.dp)
+                )
+            }
+            Column(modifier = Modifier.padding(start = 16.dp)) {
+                Text(
+                    text = "No boarding passes yet",
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    text = "Scan your first one to get started!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
     }
 }

@@ -6,7 +6,6 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -237,7 +236,7 @@ fun ResultSheetContent(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.Top
             ) {
-                
+
                 Button(
                     onClick = { onSave(boardingPass) },
                     shape = RoundedCornerShape(
@@ -257,7 +256,7 @@ fun ResultSheetContent(
 
 
                 }
-                
+
                 IconButton(
                     shape = RoundedCornerShape(
                         topEnd = 16.dp,
@@ -290,36 +289,36 @@ fun ResultSheetContent(
                 .padding(horizontal = 16.dp)
                 .height(30.dp)
         ) {
-                val wavePath = Path()
-                val waveHeight = 15f
-                val desiredWaveWidth = 30f
-                val halfWaveCount =
-                    (size.width / desiredWaveWidth).toInt().coerceAtLeast(1)
-                val waveWidth = size.width / halfWaveCount
+            val wavePath = Path()
+            val waveHeight = 15f
+            val desiredWaveWidth = 30f
+            val halfWaveCount =
+                (size.width / desiredWaveWidth).toInt().coerceAtLeast(1)
+            val waveWidth = size.width / halfWaveCount
 
-                wavePath.moveTo(0f, size.height / 2)
+            wavePath.moveTo(0f, size.height / 2)
 
-                var x = 0f
-                var goingUp = true
-                repeat(halfWaveCount) {
-                    val controlY =
-                        if (goingUp) size.height / 2 - waveHeight else size.height / 2 + waveHeight
-                    wavePath.quadraticTo(
-                        x + waveWidth / 2, controlY,
-                        x + waveWidth, size.height / 2
-                    )
-                    x += waveWidth
-                    goingUp = !goingUp
-                }
-
-                drawPath(
-                    path = wavePath,
-                    color = outlineColor,
-                    style = Stroke(
-                        width = 8f,
-                    )
+            var x = 0f
+            var goingUp = true
+            repeat(halfWaveCount) {
+                val controlY =
+                    if (goingUp) size.height / 2 - waveHeight else size.height / 2 + waveHeight
+                wavePath.quadraticTo(
+                    x + waveWidth / 2, controlY,
+                    x + waveWidth, size.height / 2
                 )
+                x += waveWidth
+                goingUp = !goingUp
             }
+
+            drawPath(
+                path = wavePath,
+                color = outlineColor,
+                style = Stroke(
+                    width = 8f,
+                )
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -399,11 +398,6 @@ fun FlightLegSegment(
                             style = MaterialTheme.typography.titleMedium,
                             color = colorScheme.onSurface
                         )
-                        Text(
-                            text = "JULIAN ${leg.flightDateJulian}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colorScheme.onSurfaceVariant
-                        )
                     }
 
                     Row(
@@ -460,7 +454,11 @@ fun AirportNode(airportName: String, icon: ImageVector, label: String) {
 @Composable
 fun DetailItem(label: String, value: String) {
     Column {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = colorScheme.onSurfaceVariant)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.onSurfaceVariant
+        )
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
     }
 }

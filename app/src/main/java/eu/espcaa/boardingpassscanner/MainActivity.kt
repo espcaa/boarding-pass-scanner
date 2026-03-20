@@ -27,6 +27,8 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import eu.espcaa.boardingpassscanner.data.AppDatabase
 import eu.espcaa.boardingpassscanner.screens.BoardingDetailScreen
 import eu.espcaa.boardingpassscanner.screens.HomeScreen
@@ -84,15 +86,23 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `airline_colors` (`carrier` TEXT NOT NULL, `seedColor` INTEGER NOT NULL, PRIMARY KEY(`carrier`))")
+    }
+}
+
 val appModule = module {
     single { AirlineManager(androidContext()).also { it.init(androidContext()) } }
     single { AirportManager(androidContext()) }
-    single { AirlineColorCache() }
     single {
         Room.databaseBuilder(androidContext(), AppDatabase::class.java, "boarding_passes.db")
+            .addMigrations(MIGRATION_1_2)
             .build()
     }
     single { get<AppDatabase>().boardingPassDao() }
+    single { get<AppDatabase>().airlineColorDao() }
+    single { AirlineColorCache(get()) }
 }
 
 @Composable

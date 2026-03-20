@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -60,7 +58,6 @@ import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import coil3.compose.AsyncImage
 import com.google.zxing.aztec.AztecWriter
-import eu.espcaa.boardingpassscanner.parser.BoardingPass
 import eu.espcaa.boardingpassscanner.parser.ConvertToBoardingPass
 import eu.espcaa.boardingpassscanner.parser.Leg
 import eu.espcaa.boardingpassscanner.parser.ParseBCBP
@@ -71,7 +68,11 @@ import org.koin.compose.koinInject
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class
+)
 @Composable
 fun BoardingDetailScreen(
     rawBarcode: String,
@@ -111,7 +112,11 @@ fun BoardingDetailScreen(
                 LargeTopAppBar(
                     title = {
                         Text(
-                            "${airportManager.getCity(boardingPass.legs.first().from)} → ${airportManager.getCity(boardingPass.legs.first().to)}",
+                            "${airportManager.getCity(boardingPass.legs.first().from)} → ${
+                                airportManager.getCity(
+                                    boardingPass.legs.first().to
+                                )
+                            }",
                             style = MaterialTheme.typography.titleLargeEmphasized
                         )
                     },
@@ -121,9 +126,12 @@ fun BoardingDetailScreen(
                         }
                     },
                     scrollBehavior = scrollBehavior,
-                    colors = TopAppBarDefaults.largeTopAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        scrolledContainerColor = MaterialTheme.colorScheme.primaryContainer
+                        scrolledContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        navigationIconContentColor = Color.Unspecified,
+                        titleContentColor = Color.Unspecified,
+                        actionIconContentColor = Color.Unspecified
                     )
                 )
             }
@@ -172,7 +180,11 @@ fun BoardingDetailScreen(
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "${carrier} ${boardingPass.legs.first().flightNumber.trimStart('0')}",
+                                    text = "${carrier} ${
+                                        boardingPass.legs.first().flightNumber.trimStart(
+                                            '0'
+                                        )
+                                    }",
                                     style = MaterialTheme.typography.titleLargeEmphasized,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 )
@@ -180,7 +192,9 @@ fun BoardingDetailScreen(
                                     Text(
                                         text = "E-TICKET",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                                            alpha = 0.6f
+                                        ),
                                     )
                                 }
                             }
@@ -229,7 +243,8 @@ fun BoardingDetailScreen(
                         ) {
                             InfoField(
                                 label = "SEAT",
-                                value = boardingPass.legs.first().seat.trimStart('0').ifEmpty { "—" }
+                                value = boardingPass.legs.first().seat.trimStart('0')
+                                    .ifEmpty { "—" }
                             )
                             InfoField(
                                 label = "CLASS",
@@ -237,7 +252,8 @@ fun BoardingDetailScreen(
                             )
                             InfoField(
                                 label = "SEQ",
-                                value = boardingPass.legs.first().sequenceNumber.trimStart('0').ifEmpty { "—" }
+                                value = boardingPass.legs.first().sequenceNumber.trimStart('0')
+                                    .ifEmpty { "—" }
                             )
                         }
 
@@ -273,7 +289,10 @@ fun BoardingDetailScreen(
                                     InfoField(
                                         label = "DATE",
                                         value = leg.flightDate?.format(
-                                            DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH)
+                                            DateTimeFormatter.ofPattern(
+                                                "dd MMM yyyy",
+                                                Locale.ENGLISH
+                                            )
                                         ) ?: "Day ${leg.flightJulian.trimStart('0')}"
                                     )
                                 }

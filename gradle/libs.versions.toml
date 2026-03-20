@@ -20,6 +20,7 @@ room = "2.8.4"
 ksp = "2.3.6"
 palette = "1.0.0"
 zxing = "3.5.3"
+materialKolor = "4.1.1"
 nav3 = "1.0.1"
 lifecycleNav3 = "2.11.0-alpha02"
 material3 = "1.4.0"
@@ -66,6 +67,7 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 androidx-palette = { group = "androidx.palette", name = "palette", version.ref = "palette" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3" }
