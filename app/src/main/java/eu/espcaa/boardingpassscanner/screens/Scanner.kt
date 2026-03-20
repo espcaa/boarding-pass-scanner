@@ -135,7 +135,7 @@ fun BarcodeTracker(
 )
 @Composable
 fun BoardingPassScanner(
-    onSuccess: (JulianBoardingPass, String) -> Unit,
+    onSuccess: suspend (JulianBoardingPass, String) -> Boolean,
     overlayContent: @Composable (BoxScope.() -> Unit) = {},
     canScan: Boolean = true,
 ) {
@@ -149,7 +149,7 @@ fun BoardingPassScanner(
     var camera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
     var zoomLevel by remember { mutableFloatStateOf(1f) }
 
-    
+
     var barcodeRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     val animatedRect = remember {
         Animatable(
@@ -253,8 +253,12 @@ fun BoardingPassScanner(
                             if (currentCanScan) {
                                 firstBarcode.rawValue?.let { rawData ->
                                     handleSuccessfulScan(rawData, onSuccess = {
-                                        onSuccess(it, rawData)
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        scope.launch {
+                                            val success = onSuccess(it, rawData)
+                                            if (success) {
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            }
+                                        }
                                     })
                                 }
                             }
@@ -263,7 +267,7 @@ fun BoardingPassScanner(
                                 hideJob = scope.launch {
                                     kotlinx.coroutines.delay(1000)
                                     barcodeRect = null
-                                    
+
                                     animatedRect.snapTo(
                                         androidx.compose.ui.geometry.Rect(
                                             0f,
