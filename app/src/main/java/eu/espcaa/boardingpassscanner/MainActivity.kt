@@ -178,7 +178,16 @@ fun BoardingPassApp() {
                     }
 
                     is TestScanRoute -> NavEntry(key) {
-                        TestScanner()
+                        TestScanner(
+                            onOpenPass = { raw, year ->
+                                backStack.add(
+                                    BoardingPassDetailRoute(
+                                        raw,
+                                        year
+                                    )
+                                )
+                            },
+                        )
                     }
 
                     else -> error("Unknown nav key: $key")

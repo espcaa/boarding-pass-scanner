@@ -79,6 +79,7 @@ fun TestScanner(
     airlineManager: AirlineManager = koinInject(),
     airportManager: AirportManager = koinInject(),
     boardingPassDao: BoardingPassDao = koinInject(),
+    onOpenPass: (String, Int) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -101,6 +102,8 @@ fun TestScanner(
         }
     }
 
+    val currentRawData = remember { mutableStateOf<String?>(null) }
+
     if (hasCameraPermission) {
         var scannedPass by remember { mutableStateOf<JulianBoardingPass?>(null) }
         var scannedRawBarcode by remember { mutableStateOf("") }
@@ -112,6 +115,7 @@ fun TestScanner(
                     scannedPass = pass
                     scannedRawBarcode = rawData
                     showSheet = true
+                    currentRawData.value = rawData
                     true
                 } else {
                     false
@@ -158,6 +162,12 @@ fun TestScanner(
                         scope.launch {
                             boardingPassDao.deleteByRawBarcode(scannedRawBarcode)
                         }
+                    },
+                    onOpen = {
+                        onOpenPass(
+                            currentRawData.value ?: "",
+                            java.time.LocalDate.now().year
+                        )
                     }
                 )
             }
@@ -205,7 +215,8 @@ fun ResultSheetContent(
     airlineManager: AirlineManager,
     airportManager: AirportManager,
     onSave: (JulianBoardingPass) -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onOpen: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -301,7 +312,9 @@ fun ResultSheetContent(
                         topStart = 4.dp,
                         bottomStart = 4.dp
                     ),
-                    onClick = {},
+                    onClick = {
+                        onOpen()
+                    },
                     modifier = Modifier.padding(horizontal = 0.5.dp),
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = colorScheme.primary,

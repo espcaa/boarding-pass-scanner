@@ -92,7 +92,7 @@ data class Screen(
 fun HomeScreen(
     innerPadding: PaddingValues = PaddingValues(0.dp),
     onScanClick: () -> Unit = {},
-    onPassClick: (String, Int) -> Unit
+    onPassClick: (String, Int) -> Unit,
 ) {
 
     var activeQuery by rememberSaveable { mutableStateOf("") }
